@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Background Remover</title>
-    <script src="https://unpkg.com/@imgly/background-removal@1.2.1/dist/imgly-background-removal.umd.min.js"></script>
     <style>
         :root { --primary-color: #4f46e5; --bg-color: #f9fafb; }
         body {
@@ -61,13 +60,13 @@
             cursor: pointer;
             margin-top: 10px;
         }
-        #statusText { margin-top: 15px; color: #666; }
+        #statusText { margin-top: 15px; color: #666; font-family: monospace; }
     </style>
 </head>
 <body>
 
     <h1>AI Background Remover</h1>
-    <p style="color:#666; margin-bottom:30px;">Powered by unpkg & WebAssembly</p>
+    <p style="color:#666; margin-bottom:30px;">Static Web App (JSPM + UNPKG)</p>
 
     <div class="container">
         <div class="upload-area" onclick="document.getElementById('fileInput').click()">
@@ -91,7 +90,11 @@
         </div>
     </div>
 
-    <script>
+    <script type="module">
+        // 1. 这里的 import 使用 jspm.dev，它会自动帮我们找到正确的入口文件
+        // 这样你就不会遇到 "imglyRemoveBackground is not defined" 的问题了
+        import removeBackground from "https://jspm.dev/@imgly/background-removal";
+
         const fileInput = document.getElementById('fileInput');
         const resultsArea = document.getElementById('resultsArea');
         const originalImg = document.getElementById('originalImg');
@@ -116,14 +119,13 @@
 
         async function startProcessing(imageFile) {
             try {
-                // 2. 关键修正：配置 publicPath 指向 unpkg
-                // unpkg 没有 150MB 的大小限制，可以正常下载大模型
+                // 2. publicPath 依然指向 unpkg，因为 unpkg 没有文件大小限制
                 const config = {
                     publicPath: 'https://unpkg.com/@imgly/background-removal-data@1.2.1/dist/',
                     progress: (key, current, total) => {
                         const percent = Math.round((current / total) * 100);
                         if(key.includes('fetch')) {
-                             statusText.innerText = `Downloading Model Data... ${percent}%`;
+                             statusText.innerText = `Downloading AI Model... ${percent}%`;
                         } else if (key.includes('compute')) {
                              statusText.innerText = `Processing... ${percent}%`;
                         }
@@ -131,7 +133,8 @@
                     debug: true
                 };
 
-                const blob = await imglyRemoveBackground(imageFile, config);
+                // 注意：jspm 导出的函数名通常是 default export，我们上面命名为 removeBackground
+                const blob = await removeBackground(imageFile, config);
 
                 resultsArea.style.display = 'grid';
                 if (currentBlobURL) URL.revokeObjectURL(currentBlobURL);

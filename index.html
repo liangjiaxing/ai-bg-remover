@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Background Remover</title>
+    <title>AI Background Remover (v1.4.5)</title>
     <style>
         :root { --primary-color: #4f46e5; --bg-color: #f9fafb; }
         body {
@@ -65,7 +65,7 @@
 <body>
 
     <h1>AI Background Remover</h1>
-    <p style="color:#666; margin-bottom:30px;">Running on esm.sh & unpkg</p>
+    <p style="color:#666; margin-bottom:30px;">Version 1.4.5 (Official CDN)</p>
 
     <div class="container">
         <div class="upload-area" onclick="document.getElementById('fileInput').click()">
@@ -90,7 +90,7 @@
     </div>
 
     <script type="module">
-        // 1. 这里的 ?bundle=true 会强制把 lodash 等依赖打包在一起，防止 export 错误
+        // JS 加载逻辑
         import imglyRemoveBackground from "https://esm.sh/@imgly/background-removal@1.4.5?bundle=true";
 
         const fileInput = document.getElementById('fileInput');
@@ -105,7 +105,7 @@
             if (!file) return;
 
             resultsArea.style.display = 'none';
-            statusText.innerText = 'Checking libraries...';
+            statusText.innerText = 'Connecting to Official CDN...';
             
             const reader = new FileReader();
             reader.onload = (e) => {
@@ -117,18 +117,19 @@
 
         async function startProcessing(imageFile) {
             try {
-                // 2. 模型数据依然走 unpkg，因为那里没有文件大小限制
+                // 核心修复：使用 static.img.ly (官方源)
+                // 这个源是专门为这个库配置的，不存在 CORS 和大小限制问题
                 const config = {
-                    publicPath: 'https://unpkg.com/@imgly/background-removal-data@1.4.5/dist/',
+                    publicPath: 'https://static.img.ly/npm/@imgly/background-removal-data@1.4.5/dist/',
+                    debug: true, 
                     progress: (key, current, total) => {
-                        const percent = Math.round((current / total) * 100);
-                        if(key.includes('fetch')) {
-                             statusText.innerText = `Downloading Model... ${percent}%`;
-                        } else if (key.includes('compute')) {
-                             statusText.innerText = `AI Processing... ${percent}%`;
+                        if (typeof current === 'number' && typeof total === 'number' && total > 0) {
+                            const percent = Math.round((current / total) * 100);
+                            statusText.innerText = `Downloading Resources... ${percent}%`;
+                        } else {
+                            statusText.innerText = `Processing...`;
                         }
-                    },
-                    debug: true
+                    }
                 };
 
                 const blob = await imglyRemoveBackground(imageFile, config);
@@ -137,7 +138,7 @@
                 if (currentBlobURL) URL.revokeObjectURL(currentBlobURL);
                 currentBlobURL = URL.createObjectURL(blob);
                 processedImg.src = currentBlobURL;
-                statusText.innerText = '✅ Background Removed!';
+                statusText.innerText = '✅ Done!';
 
                 document.getElementById('downloadBtn').onclick = () => {
                     const link = document.createElement('a');
@@ -149,7 +150,7 @@
             } catch (error) {
                 console.error(error);
                 statusText.style.color = 'red';
-                statusText.innerHTML = `❌ Error: ${error.message}`;
+                statusText.innerHTML = `❌ Error: ${error.message}<br>Check Console (F12)`;
             }
         }
     </script>

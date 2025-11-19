@@ -91,7 +91,7 @@
 
     <script type="module">
         // 1. 这里的 ?bundle=true 会强制把 lodash 等依赖打包在一起，防止 export 错误
-        import imglyRemoveBackground from "https://esm.sh/@imgly/background-removal@1.2.1?bundle=true";
+        import imglyRemoveBackground from "https://esm.sh/@imgly/background-removal@1.4.5?bundle=true";
 
         const fileInput = document.getElementById('fileInput');
         const resultsArea = document.getElementById('resultsArea');
@@ -119,7 +119,7 @@
             try {
                 // 2. 模型数据依然走 unpkg，因为那里没有文件大小限制
                 const config = {
-                    publicPath: 'https://unpkg.com/@imgly/background-removal-data@1.2.1/dist/',
+                    publicPath: 'https://unpkg.com/@imgly/background-removal-data@1.4.5/dist/',
                     progress: (key, current, total) => {
                         const percent = Math.round((current / total) * 100);
                         if(key.includes('fetch')) {

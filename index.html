@@ -17,7 +17,6 @@
             margin: 0;
             padding: 20px;
         }
-        h1 { margin-bottom: 10px; }
         .container {
             background: #fff;
             padding: 30px;
@@ -60,13 +59,13 @@
             cursor: pointer;
             margin-top: 10px;
         }
-        #statusText { margin-top: 15px; color: #666; font-family: monospace; }
+        #statusText { margin-top: 15px; color: #666; font-family: monospace; font-size: 0.9rem; }
     </style>
 </head>
 <body>
 
     <h1>AI Background Remover</h1>
-    <p style="color:#666; margin-bottom:30px;">Static Web App (JSPM + UNPKG)</p>
+    <p style="color:#666; margin-bottom:30px;">Running on esm.sh & unpkg</p>
 
     <div class="container">
         <div class="upload-area" onclick="document.getElementById('fileInput').click()">
@@ -91,9 +90,8 @@
     </div>
 
     <script type="module">
-        // 1. 这里的 import 使用 jspm.dev，它会自动帮我们找到正确的入口文件
-        // 这样你就不会遇到 "imglyRemoveBackground is not defined" 的问题了
-        import removeBackground from "https://jspm.dev/@imgly/background-removal";
+        // 1. 这里的 ?bundle=true 会强制把 lodash 等依赖打包在一起，防止 export 错误
+        import imglyRemoveBackground from "https://esm.sh/@imgly/background-removal@1.2.1?bundle=true";
 
         const fileInput = document.getElementById('fileInput');
         const resultsArea = document.getElementById('resultsArea');
@@ -107,7 +105,7 @@
             if (!file) return;
 
             resultsArea.style.display = 'none';
-            statusText.innerText = 'Preparing...';
+            statusText.innerText = 'Checking libraries...';
             
             const reader = new FileReader();
             reader.onload = (e) => {
@@ -119,28 +117,27 @@
 
         async function startProcessing(imageFile) {
             try {
-                // 2. publicPath 依然指向 unpkg，因为 unpkg 没有文件大小限制
+                // 2. 模型数据依然走 unpkg，因为那里没有文件大小限制
                 const config = {
                     publicPath: 'https://unpkg.com/@imgly/background-removal-data@1.2.1/dist/',
                     progress: (key, current, total) => {
                         const percent = Math.round((current / total) * 100);
                         if(key.includes('fetch')) {
-                             statusText.innerText = `Downloading AI Model... ${percent}%`;
+                             statusText.innerText = `Downloading Model... ${percent}%`;
                         } else if (key.includes('compute')) {
-                             statusText.innerText = `Processing... ${percent}%`;
+                             statusText.innerText = `AI Processing... ${percent}%`;
                         }
                     },
                     debug: true
                 };
 
-                // 注意：jspm 导出的函数名通常是 default export，我们上面命名为 removeBackground
-                const blob = await removeBackground(imageFile, config);
+                const blob = await imglyRemoveBackground(imageFile, config);
 
                 resultsArea.style.display = 'grid';
                 if (currentBlobURL) URL.revokeObjectURL(currentBlobURL);
                 currentBlobURL = URL.createObjectURL(blob);
                 processedImg.src = currentBlobURL;
-                statusText.innerText = '✅ Done!';
+                statusText.innerText = '✅ Background Removed!';
 
                 document.getElementById('downloadBtn').onclick = () => {
                     const link = document.createElement('a');
@@ -151,6 +148,7 @@
 
             } catch (error) {
                 console.error(error);
+                statusText.style.color = 'red';
                 statusText.innerHTML = `❌ Error: ${error.message}`;
             }
         }

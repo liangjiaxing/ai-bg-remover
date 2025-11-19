@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fast Portrait Remover (MediaPipe)</title>
+    <title>AI 证件照换底色工具 (MediaPipe)</title>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/selfie_segmentation.js"></script>
     <style>
-        :root { --primary-color: #059669; --bg-color: #f0fdf4; }
+        :root { --primary-color: #2563eb; --bg-color: #f8fafc; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--bg-color);
@@ -21,65 +21,107 @@
         .container {
             background: #fff;
             padding: 30px;
-            border-radius: 16px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
             width: 100%;
-            max-width: 800px;
+            max-width: 600px;
             text-align: center;
         }
+        h1 { margin: 0 0 10px 0; font-size: 1.5rem; }
+        
+        /* 上传区域 */
         .upload-area {
-            border: 2px dashed #a7f3d0;
+            border: 2px dashed #cbd5e1;
             border-radius: 12px;
-            padding: 40px;
+            padding: 30px;
             cursor: pointer;
-            margin-bottom: 20px;
-            background-color: #ecfdf5;
+            margin: 20px 0;
+            background-color: #f1f5f9;
             transition: 0.3s;
         }
-        .upload-area:hover { border-color: var(--primary-color); }
-        
+        .upload-area:hover { border-color: var(--primary-color); background-color: #eff6ff; }
+
+        /* 画布样式 */
         canvas {
             max-width: 100%;
             height: auto;
             border-radius: 8px;
-            background-image: linear-gradient(45deg, #ccc 25%, transparent 25%), 
-                              linear-gradient(-45deg, #ccc 25%, transparent 25%), 
-                              linear-gradient(45deg, transparent 75%, #ccc 75%), 
-                              linear-gradient(-45deg, transparent 75%, #ccc 75%);
+            /* 默认显示透明棋盘格 */
+            background-image: linear-gradient(45deg, #eee 25%, transparent 25%), 
+                              linear-gradient(-45deg, #eee 25%, transparent 25%), 
+                              linear-gradient(45deg, transparent 75%, #eee 75%), 
+                              linear-gradient(-45deg, transparent 75%, #eee 75%);
             background-size: 20px 20px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            display: none; /* 初始隐藏 */
         }
+
+        /* 颜色选择器 */
+        .color-options {
+            display: none; /* 初始隐藏 */
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .color-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 3px solid transparent;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+        .color-btn:hover { transform: scale(1.1); }
+        .color-btn.active { border-color: #333; transform: scale(1.1); }
         
+        /* 颜色定义 */
+        .bg-transparent { background: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPjxwYXRoIGQ9Ik0wIDBoNHY0SDB6bTQgNGg0djRINHoiIGZpbGw9IiNjY2MiIGZpbGwtb3BhY2l0eT0iMC40Ii8+PC9zdmc+'); background-color: white; }
+        .bg-red { background-color: #bf1f1f; } /* 证件照红 */
+        .bg-blue { background-color: #2764c2; } /* 证件照蓝 */
+        .bg-white { background-color: #ffffff; border: 1px solid #ddd; }
+
         .btn {
             background-color: var(--primary-color);
             color: white;
-            padding: 10px 24px;
-            border-radius: 6px;
+            padding: 12px 30px;
+            border-radius: 8px;
             border: none;
-            font-weight: bold;
+            font-weight: 600;
             cursor: pointer;
-            margin-top: 20px;
-            display: none; /* Hidden initially */
+            font-size: 1rem;
+            display: none;
         }
-        #statusText { margin: 15px 0; color: #666; font-weight: 500; }
+        .btn:hover { opacity: 0.9; }
+
+        #statusText { margin: 10px 0; color: #64748b; font-size: 0.9rem; }
     </style>
 </head>
 <body>
 
-    <h1>⚡️ Fast Portrait Remover</h1>
-    <p style="color:#666; margin-bottom:30px;">Powered by Google MediaPipe (~2MB)</p>
-
     <div class="container">
+        <h1>AI 证件照换底色</h1>
+        <p style="color:#94a3b8; font-size:0.85rem;">极速人像抠图 • 本地处理</p>
+
         <div class="upload-area" onclick="document.getElementById('fileInput').click()">
-            <p>📸 Click to Upload (Best for Humans)</p>
+            <p>📸 点击上传人像照片</p>
             <input type="file" id="fileInput" style="display:none" accept="image/*">
         </div>
 
         <div id="statusText"></div>
 
         <canvas id="outputCanvas"></canvas>
-        <br>
-        <button id="downloadBtn" class="btn">⬇️ Download PNG</button>
+
+        <div class="color-options" id="colorPanel">
+            <div class="color-btn bg-transparent active" onclick="changeColor('transparent', this)" title="透明背景"></div>
+            <div class="color-btn bg-red" onclick="changeColor('#bf1f1f', this)" title="红底 (证件照)"></div>
+            <div class="color-btn bg-blue" onclick="changeColor('#2764c2', this)" title="蓝底 (证件照)"></div>
+            <div class="color-btn bg-white" onclick="changeColor('#ffffff', this)" title="白底"></div>
+        </div>
+
+        <button id="downloadBtn" class="btn">⬇️ 下载结果</button>
     </div>
 
     <script>
@@ -88,75 +130,114 @@
         const canvas = document.getElementById('outputCanvas');
         const ctx = canvas.getContext('2d');
         const downloadBtn = document.getElementById('downloadBtn');
+        const colorPanel = document.getElementById('colorPanel');
 
         let selfieSegmentation = null;
+        let lastResults = null; // 存储 AI 计算结果，用于切换颜色时重绘
+        let currentBgColor = 'transparent';
 
-        // 1. 初始化 MediaPipe 模型
+        // 1. 初始化模型
         function initModel() {
-            statusText.innerText = 'Loading lightweight model...';
+            if(selfieSegmentation) return; 
+            statusText.innerText = '正在加载模型 (约 3MB)...';
             
             selfieSegmentation = new SelfieSegmentation({locateFile: (file) => {
-                // 强制指定从 CDN 加载关联文件 (.wasm, .tflite)
                 return `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${file}`;
             }});
 
-            selfieSegmentation.setOptions({
-                modelSelection: 1, // 0: 一般模型, 1: 风景/人像优化模型
-            });
-
+            selfieSegmentation.setOptions({ modelSelection: 1 });
             selfieSegmentation.onResults(onResults);
-            statusText.innerText = 'Ready! Upload an image.';
+            statusText.innerText = '模型就绪，请上传照片';
         }
 
-        // 2. 处理结果的回调函数
+        // 2. AI 处理完成后的回调
         function onResults(results) {
-            // 设置画布尺寸与原图一致
-            canvas.width = results.image.width;
-            canvas.height = results.image.height;
+            statusText.innerText = '✅ 处理完成！请选择背景颜色';
+            canvas.style.display = 'block';
+            colorPanel.style.display = 'flex';
+            downloadBtn.style.display = 'inline-block';
 
-            // A. 绘制蒙版 (Mask)
+            // 保存结果以便换色时使用
+            lastResults = results;
+            
+            // 首次渲染
+            drawCanvas();
+        }
+
+        // 3. 核心渲染函数 (换色逻辑在这里)
+        function drawCanvas() {
+            if (!lastResults) return;
+
+            // 设置画布尺寸
+            canvas.width = lastResults.image.width;
+            canvas.height = lastResults.image.height;
+
             ctx.save();
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.drawImage(results.segmentationMask, 0, 0, canvas.width, canvas.height);
 
-            // B. 核心魔法：应用蒙版
-            // 'source-in' 意味着：只保留 "新绘制图片(原图)" 中与 "已有内容(蒙版)" 重叠的部分
+            // 步骤 A: 绘制蒙版 (Mask)
+            ctx.drawImage(lastResults.segmentationMask, 0, 0, canvas.width, canvas.height);
+
+            // 步骤 B: 使用 'source-in' 只保留人像部分
+            // (Mask 与 原图 重叠的部分保留，其余变透明)
             ctx.globalCompositeOperation = 'source-in';
-            ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
+            ctx.drawImage(lastResults.image, 0, 0, canvas.width, canvas.height);
+
+            // 步骤 C: 绘制背景色
+            if (currentBgColor !== 'transparent') {
+                // 使用 'destination-over' 将颜色绘制在现有图像(人像)的下方
+                ctx.globalCompositeOperation = 'destination-over';
+                ctx.fillStyle = currentBgColor;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
 
             ctx.restore();
-
-            statusText.innerText = '✅ Done!';
-            downloadBtn.style.display = 'inline-block';
         }
 
-        // 3. 监听文件上传
+        // 4. 切换颜色的点击事件
+        window.changeColor = (color, btnElement) => {
+            currentBgColor = color;
+            
+            // UI 更新：设置选中状态
+            document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+            btnElement.classList.add('active');
+
+            // 重绘
+            drawCanvas();
+        };
+
+        // 5. 处理上传
         fileInput.addEventListener('change', (event) => {
             const file = event.target.files[0];
             if (!file) return;
 
-            statusText.innerText = 'Processing...';
-            downloadBtn.style.display = 'none';
-
+            statusText.innerText = '正在快速抠图...';
+            canvas.style.display = 'none';
+            
             const img = new Image();
             img.src = URL.createObjectURL(file);
             
             img.onload = async () => {
-                // 发送给 AI 处理
-                if (!selfieSegmentation) await initModel(); // 懒加载
+                if (!selfieSegmentation) initModel();
+                // 必须要等待模型加载完，这里做一个简单的轮询等待
+                while(!selfieSegmentation) {
+                    await new Promise(r => setTimeout(r, 100));
+                }
                 await selfieSegmentation.send({image: img});
             };
         });
 
-        // 4. 下载功能
+        // 6. 下载
         downloadBtn.onclick = () => {
             const link = document.createElement('a');
-            link.download = 'portrait-removed.png';
+            // 根据背景色决定文件名
+            const suffix = currentBgColor === 'transparent' ? 'transparent' : 'color-bg';
+            link.download = `id-photo-${suffix}.png`;
             link.href = canvas.toDataURL('image/png');
             link.click();
         };
 
-        // 页面加载时预初始化
+        // 预加载
         window.onload = initModel;
 
     </script>
